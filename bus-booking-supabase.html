@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RoadRunner Bus Booking</title>
+<style>
+:root{--bg:#f4f7fc;--card:#fff;--ink:#0f1f3d;--mute:#5d6b86;--pri:#1550d6;--pri2:#0d3aa3;--line:#d9e1f0;--ok:#16a34a;--bad:#c2c9d8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0c1426;--card:#152140;--ink:#e8eefc;--mute:#9aa8c7;--pri:#5b8cff;--pri2:#3b6df0;--line:#263459;--bad:#34426a}}
+:root[data-theme="dark"]{--bg:#0c1426;--card:#152140;--ink:#e8eefc;--mute:#9aa8c7;--pri:#5b8cff;--pri2:#3b6df0;--line:#263459;--bad:#34426a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,'Times New Roman',serif}
+h1,h2,h3,button,input,select,label,.ui{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:var(--pri);color:#fff}
+header b{font:700 20px system-ui}header button{background:#ffffff26;color:#fff;border:0;border-radius:8px;padding:8px 12px;margin-left:6px}
+main{max-width:640px;margin:0 auto;padding:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+h2{margin:0 0 12px;font-size:22px}label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
+input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:16px}
+.btn{width:100%;margin-top:16px;padding:14px;border:0;border-radius:10px;background:var(--pri);color:#fff;font-size:16px;font-weight:600}
+.btn:hover{background:var(--pri2)}.btn.ghost{background:transparent;color:var(--pri);border:1px solid var(--pri)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--pri);outline-offset:2px}
+.hero svg{width:100%;height:auto;border-radius:14px;display:block;margin-bottom:14px}
+.row{display:flex;gap:10px}.row>*{flex:1}.bus{cursor:pointer}.bus .top{display:flex;justify-content:space-between;align-items:center}
+.bus svg{width:64px;height:32px}.price{font:700 20px system-ui;color:var(--pri)}.mute{color:var(--mute);font-size:14px}
+.seats{display:grid;grid-template-columns:repeat(2,1fr) 28px repeat(2,1fr);gap:8px;max-width:300px;margin:12px auto}
+.seat{height:40px;border:0;border-radius:8px 8px 4px 4px;background:var(--card);border:2px solid var(--pri);color:var(--ink);font-size:13px}
+.seat.taken{background:var(--bad);border-color:var(--bad);color:var(--mute)}.seat.sel{background:var(--pri);color:#fff}
+.legend{display:flex;gap:14px;justify-content:center;font:13px system-ui;color:var(--mute)}
+.ticket{border:2px dashed var(--pri);text-align:center}.ticket .ok{font-size:44px}.err{color:#d93025;font:14px system-ui;min-height:20px;margin-top:8px}
+dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;text-align:left;margin:12px 0}dt{color:var(--mute)}dd{margin:0;font-weight:600}
+.hide{display:none}
+</style></head><body>
+<header><b>RoadRunner</b><span><button id="out" class="hide" onclick="logout()">Log out</button><button onclick="theme()">Light/Dark</button></span></header>
+<main id="app"></main>
+<script>
+const SB="https://tdstvfnsovfwdseoejjq.supabase.co",KEY="sb_publishable_qSxMMOBSA3T39p8BV5t7uw_zr7f4vCV";
+const H={apikey:KEY,Authorization:"Bearer "+KEY,"Content-Type":"application/json"};
+let BUSES=[];
+async function sb(path,opt){const r=await fetch(SB+path,{headers:H,...opt});if(!r.ok)throw new Error(await r.text());return r.status===201?null:r.json()}
+const CITIES=["Chennai","Bengaluru","Hyderabad","Mumbai","Pune","Delhi","Kochi","Coimbatore"];
+const S={user:"",from:CITIES[0],to:CITIES[1],date:"",bus:null,seats:[],pax:[],ref:""};
+const $=q=>document.querySelector(q),app=$("#app");
+function theme(){const r=document.documentElement;const d=getComputedStyle(r).getPropertyValue('--bg').trim()==="#0c1426";r.dataset.theme=d?"light":"dark"}
+function busSvg(c="#fff"){return`<svg viewBox="0 0 64 32"><rect x="2" y="4" width="58" height="20" rx="6" fill="${c}" stroke="#1550d6" stroke-width="2"/><g fill="#1550d6"><rect x="8" y="8" width="8" height="7" rx="1"/><rect x="19" y="8" width="8" height="7" rx="1"/><rect x="30" y="8" width="8" height="7" rx="1"/><rect x="45" y="8" width="11" height="10" rx="2"/></g><circle cx="16" cy="26" r="4" fill="#0f1f3d"/><circle cx="48" cy="26" r="4" fill="#0f1f3d"/></svg>`}
+const heroSvg=`<svg viewBox="0 0 600 220"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a5be8"/><stop offset="1" stop-color="#8fb4ff"/></linearGradient></defs><rect width="600" height="220" fill="url(#g)"/><circle cx="500" cy="60" r="28" fill="#ffe08a"/><path d="M0 170 L120 110 L220 160 L340 90 L460 150 L600 100 V220 H0Z" fill="#0d3aa3" opacity=".55"/><rect y="170" width="600" height="50" fill="#26324d"/><path d="M0 195H600" stroke="#fff" stroke-dasharray="26 18" stroke-width="3"/><g transform="translate(110 92) scale(3.4)"><rect x="2" y="4" width="58" height="20" rx="6" fill="#fff"/><rect x="2" y="14" width="58" height="4" fill="#1550d6"/><g fill="#0d3aa3"><rect x="8" y="7" width="8" height="6" rx="1"/><rect x="19" y="7" width="8" height="6" rx="1"/><rect x="30" y="7" width="8" height="6" rx="1"/><rect x="45" y="7" width="11" height="9" rx="2"/></g><circle cx="16" cy="25" r="4" fill="#0f1f3d"/><circle cx="48" cy="25" r="4" fill="#0f1f3d"/></g></svg>`;
+function go(v){const f=V[v];app.innerHTML=f();scrollTo(0,0)}
+const V={
+login:()=>`<div class="hero">${heroSvg}</div><div class="card"><h2>Log in</h2><label for="u">Username</label><input id="u" autocomplete="username"><label for="p">Password</label><input id="p" type="password" autocomplete="current-password"><div class="err" id="e"></div><button class="btn" onclick="login()">Log in</button></div>`,
+home:()=>`<div class="hero">${heroSvg}</div><div class="card"><h2>Where to, ${S.user}?</h2><label for="f">From</label><select id="f">${CITIES.map(c=>`<option ${c==S.from?"selected":""}>${c}</option>`).join("")}</select><label for="t">To</label><select id="t">${CITIES.map(c=>`<option ${c==S.to?"selected":""}>${c}</option>`).join("")}</select><label for="d">Travel date</label><input id="d" type="date" value="${S.date}"><div class="err" id="e"></div><button class="btn" onclick="search()">Search buses</button></div>`,
+list:()=>`<h2>${S.from} to ${S.to}</h2><p class="mute">${S.date} · ${BUSES.length} buses</p>${BUSES.map((b,i)=>`<div class="card bus" tabindex="0" onclick="pick(${i})" onkeydown="if(event.key==='Enter')pick(${i})"><div class="top"><div><b class="ui">${b.n}</b><div class="mute">${b.ty}</div></div>${busSvg()}</div><div class="top" style="margin-top:8px"><span>${b.t} → ${b.a}</span><span class="price">₹${b.p}</span></div></div>`).join("")}<button class="btn ghost" onclick="go('home')">Change search</button>`,
+seats:()=>{let h="";for(let r=0;r<8;r++){for(const c of ["A","B","","C","D"]){if(!c){h+="<span></span>";continue}const id=(r+1)+c;const tk=taken(id);h+=`<button class="seat ${tk?"taken":""} ${S.seats.includes(id)?"sel":""}" ${tk?"disabled":""} onclick="tog('${id}')">${id}</button>`}}return`<h2>${S.bus.n}</h2><p class="mute">${S.from} to ${S.to} · ₹${S.bus.p} per seat</p><div class="card"><div class="legend"><span>Open</span><span>Taken</span><span>Yours</span></div><div class="seats">${h}</div><div class="err" id="e"></div><div class="top ui" style="display:flex;justify-content:space-between"><span>${S.seats.length?S.seats.join(", "):"No seats chosen"}</span><b>₹${S.seats.length*S.bus.p}</b></div><button class="btn" onclick="toPax()">Continue</button></div>`},
+pax:()=>`<h2>Passenger details</h2>${S.seats.map((s,i)=>`<div class="card"><b class="ui">Seat ${s}</b><label for="n${i}">Full name</label><input id="n${i}" value="${S.pax[i]?.n||""}"><div class="row"><div><label for="a${i}">Age</label><input id="a${i}" type="number" min="1" max="110" value="${S.pax[i]?.a||""}"></div><div><label for="g${i}">Gender</label><select id="g${i}"><option>Female</option><option>Male</option><option>Other</option></select></div></div></div>`).join("")}<div class="card"><label for="ph">Phone number</label><input id="ph" type="tel" value="${S.phone||""}"><div class="err" id="e"></div></div><button class="btn" onclick="confirmB()">Confirm booking · ₹${S.seats.length*S.bus.p}</button>`,
+done:()=>`<div class="card ticket"><div class="ok">✅</div><h2>Booking confirmed</h2><p class="mute">Ticket ${S.ref}</p><dl><dt>Route</dt><dd>${S.from} to ${S.to}</dd><dt>Date</dt><dd>${S.date}</dd><dt>Bus</dt><dd>${S.bus.n}, ${S.bus.t}</dd><dt>Seats</dt><dd>${S.seats.join(", ")}</dd><dt>Passengers</dt><dd>${S.pax.map(p=>p.n).join(", ")}</dd><dt>Paid</dt><dd>₹${S.seats.length*S.bus.p}</dd></dl>${busSvg()}</div><button class="btn" onclick="S.seats=[];go('home')">Book another trip</button>`};
+function taken(id){return (S.taken||[]).includes(id)}
+function login(){const u=$("#u").value.trim(),p=$("#p").value;if(!u||p.length<4){$("#e").textContent="Enter a username and a password of 4+ characters.";return}S.user=u;$("#out").classList.remove("hide");go("home")}
+function logout(){S.user="";S.seats=[];$("#out").classList.add("hide");go("login")}
+async function search(){const f=$("#f").value,t=$("#t").value,d=$("#d").value;if(f===t){$("#e").textContent="Choose two different cities.";return}if(!d){$("#e").textContent="Pick a travel date.";return}Object.assign(S,{from:f,to:t,date:d,seats:[]});
+try{const r=await sb("/rest/v1/buses?select=*&order=id");BUSES=r.map(b=>({id:b.id,n:b.name,t:b.depart_time,a:b.arrive_time,p:b.price,ty:b.bus_type}))}catch(x){$("#e").textContent="Could not load buses. Check your connection.";return}
+go("list")}
+async function pick(i){S.bus=BUSES[i];S.seats=[];
+try{S.taken=await sb("/rest/v1/rpc/taken_seats",{method:"POST",body:JSON.stringify({p_bus:S.bus.id,p_date:S.date})})}catch(x){S.taken=[]}
+go("seats")}
+function tog(id){const i=S.seats.indexOf(id);if(i>-1)S.seats.splice(i,1);else if(S.seats.length<6)S.seats.push(id);else{go("seats");$("#e").textContent="You can book up to 6 seats.";return}go("seats")}
+function toPax(){if(!S.seats.length){$("#e").textContent="Choose at least one seat.";return}go("pax")}
+async function confirmB(){const pax=S.seats.map((_,i)=>({n:$("#n"+i).value.trim(),a:$("#a"+i).value}));const ph=$("#ph").value.trim();if(pax.some(p=>!p.n||!p.a)||ph.length<8){S.pax=pax;$("#e").textContent="Fill in every name, age, and a valid phone number.";return}S.pax=pax;S.phone=ph;S.ref="RR"+Math.random().toString(36).slice(2,8).toUpperCase();
+try{const fresh=await sb("/rest/v1/rpc/taken_seats",{method:"POST",body:JSON.stringify({p_bus:S.bus.id,p_date:S.date})});
+if(S.seats.some(x=>fresh.includes(x))){S.taken=fresh;S.seats=S.seats.filter(x=>!fresh.includes(x));go("seats");$("#e").textContent="Some seats were just booked. Choose new ones.";return}
+await sb("/rest/v1/bookings",{method:"POST",headers:{...H,Prefer:"return=minimal"},body:JSON.stringify({ref:S.ref,bus_id:S.bus.id,from_city:S.from,to_city:S.to,travel_date:S.date,seats:S.seats,passengers:S.pax.map((p,i)=>({seat:S.seats[i],name:p.n,age:+p.a})),phone:ph,total:S.seats.length*S.bus.p})})}
+catch(x){$("#e").textContent="Booking failed. Try again.";return}
+go("done")}
+$("#out").classList.add("hide");go("login");
+</script></body></html>
